@@ -6,7 +6,7 @@ import { Button } from '@primereact/ui/button';
 import { InputText } from '@primereact/ui/inputtext';
 
 import { AgGridReact } from 'ag-grid-react';
-import "./transactionList.css";
+
 import {
     removeTransaction,
     selectAllTransactions,
@@ -113,8 +113,8 @@ function TransactionList() {
                         <span
                             className={
                                 isDeposit
-                                    ? 'transaction-badge transaction-badge--deposit'
-                                    : 'transaction-badge transaction-badge--withdraw'
+                                    ? 'text-green-600 font-semibold'
+                                    : 'text-red-600 font-semibold'
                             }
                         >
                             {params.value}
@@ -129,8 +129,8 @@ function TransactionList() {
                 minWidth: 140,
                 cellClass: (params) =>
                     params.data?.accountType === 'DEPOSIT'
-                        ? 'amount amount--deposit'
-                        : 'amount amount--withdraw',
+                        ? 'text-green-600 font-semibold'
+                        : 'text-red-600 font-semibold',
                 valueFormatter: (params) => {
                     const isDeposit =
                         params.data?.accountType === 'DEPOSIT';
@@ -158,7 +158,6 @@ function TransactionList() {
                 cellRenderer: (params) => (
                     <Button
                         type="button"
-                        label="Delete"
                         severity="danger"
                         variant="outlined"
                         size="small"
@@ -166,7 +165,9 @@ function TransactionList() {
                             handleDelete(params.data.id)
                         }
                         aria-label={`Delete transaction for ${params.data.name}`}
-                    >Delete</Button>
+                    >
+                        Delete
+                    </Button>
                 ),
             },
         ],
@@ -181,21 +182,30 @@ function TransactionList() {
         [],
     );
 
+    /*
+     * Empty state
+     */
     if (transactions.length === 0) {
         return (
-            <main className="transaction-list-page">
-                <div className="transaction-list-container">
-                    <div className="empty-state">
-                        <h1>No transactions</h1>
+            <main className="p-3 md:p-5">
+                <div className="w-full max-w-70rem mx-auto">
+                    <div className="flex flex-column align-items-center justify-content-center text-center min-h-20rem">
+                        <i className="pi pi-inbox text-5xl text-color-secondary mb-3" />
 
-                        <p>
+                        <h1 className="text-3xl font-bold m-0">
+                            No transactions
+                        </h1>
+
+                        <p className="text-color-secondary mt-2 mb-4">
                             You haven't created any transactions yet.
                         </p>
 
                         <Button
-                            label="Create first transaction"
+                            type="button"
                             onClick={handleCreate}
-                        >Create first transaction</Button>
+                        >
+                            Create First Transaction
+                        </Button>
                     </div>
                 </div>
             </main>
@@ -203,40 +213,47 @@ function TransactionList() {
     }
 
     return (
-        <main className="transaction-list-page">
-            <div className="transaction-list-container">
-               <div className="page-header">
-    <div>
-        <h1>Transactions</h1>
+        <main className="p-3 md:p-5">
+            <div className="w-full max-w-90rem mx-auto">
 
-        <p>
-            {transactions.length}{' '}
-            {transactions.length === 1
-                ? 'transaction'
-                : 'transactions'}
-        </p>
-    </div>
+                {/* Header */}
+                <div className="flex flex-column md:flex-row align-items-start md:align-items-center justify-content-between gap-3 mb-4">
+                    <div>
+                        <h1 className="text-3xl font-bold m-0">
+                            Transactions
+                        </h1>
 
-    <div className="page-header-actions">
-        <Button
-            type="button"
-            severity="secondary"
-            variant="outlined"
-            onClick={() => navigate('/')}
-        >
-            Home
-        </Button>
+                        <p className="text-color-secondary mt-2 mb-0">
+                            {transactions.length}{' '}
+                            {transactions.length === 1
+                                ? 'transaction'
+                                : 'transactions'}
+                        </p>
+                    </div>
 
-        <Button
-            type="button"
-            onClick={handleCreate}
-        >
-            Create Transaction
-        </Button>
-    </div>
-</div>
+                    <div className="flex flex-column sm:flex-row gap-2 w-full md:w-auto">
+                        <Button
+                            type="button"
+                            severity="secondary"
+                            variant="outlined"
+                            onClick={() => navigate('/')}
+                            className="w-full sm:w-auto"
+                        >
+                            Home
+                        </Button>
 
-                <div className="transaction-toolbar">
+                        <Button
+                            type="button"
+                            onClick={handleCreate}
+                            className="w-full sm:w-auto"
+                        >
+                            Create Transaction
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Toolbar */}
+                <div className="flex flex-column lg:flex-row gap-3 justify-content-between mb-4">
                     <InputText
                         value={search}
                         onChange={(event) =>
@@ -244,16 +261,16 @@ function TransactionList() {
                         }
                         placeholder="Search by name or account number"
                         aria-label="Search transactions"
+                        className="w-full lg:w-25rem"
                     />
 
                     <div
-                        className="transaction-filters"
+                        className="flex flex-wrap gap-2"
                         role="group"
                         aria-label="Transaction type filter"
                     >
                         <Button
                             type="button"
-                            label="ALL"
                             severity={
                                 typeFilter === 'ALL'
                                     ? 'primary'
@@ -264,12 +281,15 @@ function TransactionList() {
                                     ? undefined
                                     : 'outlined'
                             }
-                            onClick={() => setTypeFilter('ALL')}
-                        >All </Button>
+                            onClick={() =>
+                                setTypeFilter('ALL')
+                            }
+                        >
+                            All
+                        </Button>
 
                         <Button
                             type="button"
-                            label="DEPOSIT"
                             severity={
                                 typeFilter === 'DEPOSIT'
                                     ? 'success'
@@ -280,12 +300,15 @@ function TransactionList() {
                                     ? undefined
                                     : 'outlined'
                             }
-                            onClick={() => setTypeFilter('DEPOSIT')}
-                        >Deposit</Button>
+                            onClick={() =>
+                                setTypeFilter('DEPOSIT')
+                            }
+                        >
+                            Deposit
+                        </Button>
 
                         <Button
                             type="button"
-                            label="WITHDRAW"
                             severity={
                                 typeFilter === 'WITHDRAW'
                                     ? 'danger'
@@ -296,34 +319,44 @@ function TransactionList() {
                                     ? undefined
                                     : 'outlined'
                             }
-                            onClick={() => setTypeFilter('WITHDRAW')}
-                        >Withdraw</Button>
+                            onClick={() =>
+                                setTypeFilter('WITHDRAW')
+                            }
+                        >
+                            Withdraw
+                        </Button>
                     </div>
                 </div>
 
+                {/* Grid / No results */}
                 {filteredTransactions.length === 0 ? (
-                    <div className="empty-state">
-                        <h2>No matching transactions</h2>
+                    <div className="flex flex-column align-items-center justify-content-center text-center min-h-20rem">
+                        <i className="pi pi-search text-4xl text-color-secondary mb-3" />
 
-                        <p>
+                        <h2 className="text-2xl font-semibold m-0">
+                            No matching transactions
+                        </h2>
+
+                        <p className="text-color-secondary mt-2 mb-4">
                             Try changing your search or filter.
                         </p>
 
                         <Button
-                            label="Clear filters"
+                            type="button"
                             severity="secondary"
                             variant="outlined"
                             onClick={() => {
                                 setSearch('');
                                 setTypeFilter('ALL');
                             }}
-                        >Clear filters</Button>
+                        >
+                            Clear Filters
+                        </Button>
                     </div>
                 ) : (
                     <div
-                        className="ag-theme-quartz transaction-grid"
+                        className="ag-theme-quartz w-full"
                         style={{
-                            width: '100%',
                             height: '500px',
                         }}
                     >

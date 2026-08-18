@@ -5,8 +5,9 @@ import {
     themeQuartz,
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
+import { Button } from '@primereact/ui/button';
+
 import { useUsers } from '../../hooks/useUsers';
-import './usersList.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -14,10 +15,10 @@ const EmailCellRenderer = ({ value }) => {
     if (!value) {
         return '-';
     }
+
     return (
         <a
             href={`mailto:${value}`}
-            className="user-link"
             onClick={(event) => event.stopPropagation()}
         >
             ✉ {value}
@@ -29,10 +30,10 @@ const PhoneCellRenderer = ({ value }) => {
     if (!value) {
         return '-';
     }
+
     return (
         <a
             href={`tel:${value}`}
-            className="user-link"
             onClick={(event) => event.stopPropagation()}
         >
             📞 {value}
@@ -44,17 +45,30 @@ const NameCellRenderer = ({ data }) => {
     if (!data) {
         return null;
     }
-    const fullName = `${data.firstName || ''} ${data.lastName || ''
-        }`.trim();
+
+    const fullName = `${data.firstName || ''} ${
+        data.lastName || ''
+    }`.trim();
 
     return (
-        <div className="user-name-cell">
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                height: '100%',
+            }}
+        >
             <img
                 src={data.image}
                 width="32"
                 height="32"
                 alt={fullName}
-                className="user-avatar"
+                style={{
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    flexShrink: 0,
+                }}
             />
 
             <span>{fullName}</span>
@@ -73,20 +87,21 @@ function UsersList() {
 
     const columnDefs = useMemo(
         () => [
-            // 1. Full name from firstName + lastName
             {
                 headerName: 'Name',
 
                 valueGetter: (params) =>
-                    `${params.data?.firstName || ''} ${params.data?.lastName || ''
-                        }`.trim(),
+                    `${params.data?.firstName || ''} ${
+                        params.data?.lastName || ''
+                    }`.trim(),
 
                 editable: true,
 
                 valueSetter: (params) => {
                     const value = (params.newValue || '').trim();
 
-                    const [first, ...rest] = value.split(/\s+/);
+                    const [first, ...rest] =
+                        value.split(/\s+/);
 
                     params.data.firstName = first || '';
                     params.data.lastName = rest.join(' ');
@@ -96,6 +111,7 @@ function UsersList() {
 
                 flex: 1.4,
                 minWidth: 220,
+
                 cellRenderer: NameCellRenderer,
             },
 
@@ -122,13 +138,16 @@ function UsersList() {
                 cellRenderer: PhoneCellRenderer,
             },
 
-            // 2. Address from nested object
             {
                 headerName: 'Address',
+
                 valueGetter: (params) =>
-                    `${params.data?.address?.address || ''}, ${params.data?.address?.city || ''
-                    }, ${params.data?.address?.state || ''
+                    `${params.data?.address?.address || ''}, ${
+                        params.data?.address?.city || ''
+                    }, ${
+                        params.data?.address?.state || ''
                     }`,
+
                 flex: 1.4,
                 minWidth: 300,
             },
@@ -157,20 +176,18 @@ function UsersList() {
                 },
             },
 
-            // 3. Bank summary from nested object
             {
                 headerName: 'Bank Card',
-                valueGetter: (params) => {
-                    if (!params.data?.bank) {
-                        return 'N/A';
-                    }
 
-                    const cardType = params.data.bank.cardType;
-                    const lastFour =
-                        params.data.bank.cardNumber?.slice(-4);
+                valueGetter: (params) =>
+                    params.data?.bank
+                        ? `${params.data.bank.cardType} ••••${
+                              params.data.bank.cardNumber?.slice(
+                                  -4,
+                              ) || ''
+                          }`
+                        : 'N/A',
 
-                    return `${cardType} ••••${lastFour || ''}`;
-                },
                 flex: 1.2,
                 minWidth: 240,
             },
@@ -190,10 +207,22 @@ function UsersList() {
 
     if (isLoading) {
         return (
-            <main className="users-list-page">
-                <div className="users-state">
-                    <div className="users-spinner" />
-
+            <main
+                style={{
+                    minHeight: '100vh',
+                    padding: '2rem',
+                }}
+            >
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: '400px',
+                        textAlign: 'center',
+                    }}
+                >
                     <h2>Loading users...</h2>
 
                     <p>Fetching 20 users...</p>
@@ -204,8 +233,23 @@ function UsersList() {
 
     if (isError) {
         return (
-            <main className="users-list-page">
-                <div className="users-state users-state--error">
+            <main
+                style={{
+                    minHeight: '100vh',
+                    padding: '2rem',
+                }}
+            >
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: '400px',
+                        textAlign: 'center',
+                        gap: '1rem',
+                    }}
+                >
                     <h2>Unable to load users</h2>
 
                     <p>
@@ -213,60 +257,111 @@ function UsersList() {
                             'Something went wrong.'}
                     </p>
 
-                    <button
+                    <Button
                         type="button"
-                        className="retry-button"
+                        icon="pi pi-refresh"
                         onClick={refetch}
                     >
                         Try Again
-                    </button>
+                    </Button>
                 </div>
             </main>
         );
     }
+
     return (
-        <main className="users-list-page">
-            <div className="users-list-container">
-                <div className="users-page-header">
-                    <div>
-                        <h1>Users</h1>
-                        <p>
-                            Showing {users.length} users
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        className="refresh-button"
-                        onClick={refetch}
-                    >
-                        Refresh
-                    </button>
-                </div>
-                <div className="users-grid">
-                    <AgGridReact
-                        theme={themeQuartz}
-                        rowData={users}
-                        columnDefs={columnDefs}
-                        defaultColDef={defaultColDef}
-                        pagination={true}
-                        paginationPageSize={20}
-                        paginationPageSizeSelector={[
-                            20,
-                            50,
-                            100,
-                        ]}
-                        rowHeight={52}
-                        animateRows={true}
-                        getRowId={(params) =>
-                            String(params.data.id)
-                        }
-                        onCellValueChanged={(params) => {
-                            if (params.colDef.headerName === 'Name') {
-                                console.log('Saving user:', params.data);
-                            }
+        <main
+            style={{
+                minHeight: '100vh',
+                padding: '2rem',
+            }}
+        >
+            {/* Page Header */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    marginBottom: '1.5rem',
+                    flexWrap: 'wrap',
+                }}
+            >
+                <div>
+                    <h1
+                        style={{
+                            margin: 0,
+                            fontSize: '1.75rem',
                         }}
-                    />
+                    >
+                        Users
+                    </h1>
+
+                    <p
+                        style={{
+                            margin: '0.5rem 0 0',
+                            color: '#6b7280',
+                        }}
+                    >
+                        Showing {users.length} users
+                    </p>
                 </div>
+
+                <Button
+                    type="button"
+                    icon="pi pi-refresh"
+                    onClick={refetch}
+                >
+                    Refresh
+                </Button>
+            </div>
+
+            {/* AG Grid */}
+            <div
+                style={{
+                    width: '100%',
+                }}
+            >
+                <AgGridReact
+                    theme={themeQuartz}
+                    rowData={users}
+                    columnDefs={columnDefs}
+                    defaultColDef={defaultColDef}
+                    pagination
+                    paginationPageSize={20}
+                    paginationPageSizeSelector={[
+                        20,
+                        50,
+                        100,
+                    ]}
+                    rowHeight={52}
+                    animateRows
+                    domLayout="autoHeight"
+                    getRowId={(params) =>
+                        String(params.data.id)
+                    }
+                    onCellValueChanged={(params) => {
+                        if (
+                            params.colDef.headerName ===
+                            'Name'
+                        ) {
+                            console.log(
+                                'Updated user:',
+                                params.data,
+                            );
+
+                            console.log(
+                                'firstName:',
+                                params.data.firstName,
+                            );
+
+                            console.log(
+                                'lastName:',
+                                params.data.lastName,
+                            );
+                        }
+                    }}
+                />
             </div>
         </main>
     );

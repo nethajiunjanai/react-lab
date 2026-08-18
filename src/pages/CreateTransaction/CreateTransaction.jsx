@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@primereact/ui/button';
 import { InputText } from '@primereact/ui/inputtext';
 import { Select } from '@primereact/ui/select';
 
-import { addTransaction } from '../../store/slices/transactionSlice';
-import "./createTransaction.css";
+import {
+    addTransaction,
+    selectNetBalance,
+} from '../../store/slices/transactionSlice';
 
 const INITIAL_FORM = {
     name: '',
@@ -60,6 +62,8 @@ export default function CreateTransaction() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
+    const netBalance = useSelector(selectNetBalance);
+
     const [form, setForm] = useState(INITIAL_FORM);
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
@@ -70,7 +74,6 @@ export default function CreateTransaction() {
             [field]: value,
         }));
 
-        // Clear the field error as the user corrects it.
         setErrors((current) => {
             if (!current[field]) {
                 return current;
@@ -99,23 +102,65 @@ export default function CreateTransaction() {
         updateField('accountNumber', value);
     };
 
+    const handleAmountChange = (event) => {
+        let value = event.target.value;
+
+        // Allow only digits and decimal point.
+        value = value.replace(/[^\d.]/g, '');
+
+        // Allow only one decimal point.
+        const parts = value.split('.');
+
+        if (parts.length > 2) {
+            value = `${parts[0]}.${parts.slice(1).join('')}`;
+        }
+
+        // Maximum two decimal places.
+        if (value.includes('.')) {
+            const [whole, decimal] = value.split('.');
+
+            value = `${whole}.${decimal.slice(0, 2)}`;
+        }
+
+        updateField('amount', value);
+    };
+
     const handleSubmit = (event) => {
         event.preventDefault();
 
+        // Normal form validation
         const validationErrors = validate(form);
 
-        setErrors(validationErrors);
-        setSuccessMessage('');
-
         if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            setSuccessMessage('');
             return;
         }
 
+        const amount = Number.parseFloat(form.amount);
+
+        // Insufficient balance validation
+        if (
+            form.accountType === 'WITHDRAW' &&
+            amount > netBalance
+        ) {
+            setErrors({
+                amount: `Insufficient balance. Available balance is ${netBalance.toFixed(
+                    2,
+                )}.`,
+            });
+
+            setSuccessMessage('');
+
+            return;
+        }
+
+        // Save transaction
         dispatch(
             addTransaction({
                 ...form,
                 name: form.name.trim(),
-                amount: Number.parseFloat(form.amount),
+                amount,
             }),
         );
 
@@ -133,21 +178,43 @@ export default function CreateTransaction() {
     };
 
     return (
-        <main className="create-transaction-page">
-            <div className="create-transaction-container">
-                <div className="page-header">
-                    <h1>Create Transaction</h1>
-                    <p>Enter the transaction details below.</p>
+        <main className="p-3 md:p-5">
+            <div className="w-full max-w-30rem mx-auto">
+
+                {/* Header */}
+                <div className="mb-5">
+                    <h1 className="text-3xl font-bold m-0">
+                        Create Transaction
+                    </h1>
+
+                    <p className="text-color-secondary mt-2 mb-0">
+                        Enter the transaction details below.
+                    </p>
+                </div>
+
+                {/* Current Balance */}
+                <div className="mb-4 p-3 border-round bg-primary-50">
+                    <div className="text-sm text-color-secondary">
+                        Available Balance
+                    </div>
+
+                    <div className="text-2xl font-bold text-primary mt-1">
+                        $
+                        {Number(netBalance).toFixed(2)}
+                    </div>
                 </div>
 
                 <form
                     onSubmit={handleSubmit}
                     noValidate
-                    className="transaction-form"
+                    className="flex flex-column gap-4"
                 >
                     {/* Name */}
-                    <div className="form-field">
-                        <label htmlFor="transaction-name">
+                    <div className="flex flex-column gap-2">
+                        <label
+                            htmlFor="transaction-name"
+                            className="font-semibold"
+                        >
                             Name
                         </label>
 
@@ -158,48 +225,63 @@ export default function CreateTransaction() {
                             maxLength={30}
                             invalid={Boolean(errors.name)}
                             placeholder="Enter name"
+                            className="w-full"
                         />
 
-                        <div className="character-count">
-                            {form.name.length}/30
-                        </div>
+                        <div className="flex justify-content-between">
+                            {errors.name ? (
+                                <small className="text-red-500">
+                                    {errors.name}
+                                </small>
+                            ) : (
+                                <span />
+                            )}
 
-                        {errors.name && (
-                            <small className="field-error">
-                                {errors.name}
+                            <small className="text-color-secondary">
+                                {form.name.length}/30
                             </small>
-                        )}
+                        </div>
                     </div>
 
                     {/* Gender */}
-                    <div className="form-field">
-                        <span className="field-label">
+                    <div className="flex flex-column gap-2">
+                        <span className="font-semibold">
                             Gender
                         </span>
 
-                        <div className="radio-group">
-                            <label className="radio-option">
+                        <div className="flex flex-wrap gap-4">
+                            <label className="flex align-items-center gap-2 cursor-pointer">
                                 <input
                                     type="radio"
                                     name="gender"
                                     value="MALE"
-                                    checked={form.gender === 'MALE'}
+                                    checked={
+                                        form.gender === 'MALE'
+                                    }
                                     onChange={(event) =>
-                                        updateField('gender', event.target.value)
+                                        updateField(
+                                            'gender',
+                                            event.target.value,
+                                        )
                                     }
                                 />
 
                                 <span>MALE</span>
                             </label>
 
-                            <label className="radio-option">
+                            <label className="flex align-items-center gap-2 cursor-pointer">
                                 <input
                                     type="radio"
                                     name="gender"
                                     value="FEMALE"
-                                    checked={form.gender === 'FEMALE'}
+                                    checked={
+                                        form.gender === 'FEMALE'
+                                    }
                                     onChange={(event) =>
-                                        updateField('gender', event.target.value)
+                                        updateField(
+                                            'gender',
+                                            event.target.value,
+                                        )
                                     }
                                 />
 
@@ -208,15 +290,18 @@ export default function CreateTransaction() {
                         </div>
 
                         {errors.gender && (
-                            <small className="field-error">
+                            <small className="text-red-500">
                                 {errors.gender}
                             </small>
                         )}
                     </div>
 
                     {/* Account Number */}
-                    <div className="form-field">
-                        <label htmlFor="account-number">
+                    <div className="flex flex-column gap-2">
+                        <label
+                            htmlFor="account-number"
+                            className="font-semibold"
+                        >
                             Account Number
                         </label>
 
@@ -226,20 +311,26 @@ export default function CreateTransaction() {
                             onChange={handleAccountNumberChange}
                             inputMode="numeric"
                             maxLength={10}
-                            invalid={Boolean(errors.accountNumber)}
+                            invalid={Boolean(
+                                errors.accountNumber,
+                            )}
                             placeholder="Enter account number"
+                            className="w-full"
                         />
 
                         {errors.accountNumber && (
-                            <small className="field-error">
+                            <small className="text-red-500">
                                 {errors.accountNumber}
                             </small>
                         )}
                     </div>
 
                     {/* Account Type */}
-                    <div className="form-field">
-                        <label htmlFor="account-type">
+                    <div className="flex flex-column gap-2">
+                        <label
+                            htmlFor="account-type"
+                            className="font-semibold"
+                        >
                             Account Type
                         </label>
 
@@ -248,14 +339,20 @@ export default function CreateTransaction() {
                             options={ACCOUNT_TYPES}
                             optionLabel="label"
                             optionValue="value"
-                            onValueChange={(event) => {
-                                updateField('accountType', event.value);
-                            }}
-                            invalid={Boolean(errors.accountType)}
+                            onValueChange={(event) =>
+                                updateField(
+                                    'accountType',
+                                    event.value,
+                                )
+                            }
+                            invalid={Boolean(
+                                errors.accountType,
+                            )}
                         >
                             <Select.Trigger
                                 id="account-type"
                                 type="button"
+                                className="w-full"
                             >
                                 <Select.Value placeholder="Select account type" />
                                 <Select.Indicator />
@@ -269,16 +366,20 @@ export default function CreateTransaction() {
                                 </Select.Positioner>
                             </Select.Portal>
                         </Select.Root>
+
                         {errors.accountType && (
-                            <small className="field-error">
+                            <small className="text-red-500">
                                 {errors.accountType}
                             </small>
                         )}
                     </div>
 
                     {/* Amount */}
-                    <div className="form-field">
-                        <label htmlFor="transaction-amount">
+                    <div className="flex flex-column gap-2">
+                        <label
+                            htmlFor="transaction-amount"
+                            className="font-semibold"
+                        >
                             Amount
                         </label>
 
@@ -287,73 +388,61 @@ export default function CreateTransaction() {
                             type="text"
                             inputMode="decimal"
                             value={form.amount}
-                            onChange={(event) => {
-                                let value = event.target.value;
-
-                                // Allow only digits and one decimal point.
-                                value = value.replace(/[^\d.]/g, '');
-
-                                // Allow only one decimal point.
-                                const parts = value.split('.');
-
-                                if (parts.length > 2) {
-                                    value = `${parts[0]}.${parts.slice(1).join('')}`;
-                                }
-
-                                // Maximum two decimal places.
-                                if (value.includes('.')) {
-                                    const [whole, decimal] = value.split('.');
-                                    value = `${whole}.${decimal.slice(0, 2)}`;
-                                }
-
-                                updateField('amount', value);
-                            }}
+                            onChange={handleAmountChange}
                             placeholder="0.00"
                             invalid={Boolean(errors.amount)}
+                            className="w-full"
                         />
 
                         {errors.amount && (
-                            <small className="field-error">
+                            <small className="text-red-500">
                                 {errors.amount}
                             </small>
                         )}
                     </div>
+
                     {/* Success */}
                     {successMessage && (
                         <div
                             role="status"
-                            className="success-message"
+                            className="p-3 border-round bg-green-50 text-green-700"
                         >
                             {successMessage}
                         </div>
                     )}
 
                     {/* Actions */}
-                    <div className="form-actions">
+                    <div className="flex flex-column sm:flex-row justify-content-end gap-2 pt-2">
                         <Button
                             type="button"
-                            label="Cancel"
-                            variant="outlined"
                             severity="secondary"
+                            variant="outlined"
                             onClick={handleCancel}
-                        >Cancel</Button>
+                            className="w-full sm:w-auto"
+                        >
+                            Cancel
+                        </Button>
 
                         <Button
-                            label="Transcation list"
+                            type="button"
+                            severity="secondary"
                             onClick={() =>
                                 navigate('/transactions')
-                            }>
-                            Transcation list
+                            }
+                            className="w-full sm:w-auto"
+                        >
+                            Transaction List
                         </Button>
 
                         <Button
                             type="submit"
-                            label="Save Transaction"
-                        >Submit</Button>
+                            className="w-full sm:w-auto"
+                        >
+                            Save Transaction
+                        </Button>
                     </div>
                 </form>
             </div>
         </main>
     );
 }
-

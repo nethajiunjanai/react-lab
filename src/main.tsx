@@ -5,9 +5,9 @@ import { Provider } from 'react-redux';
 import App from './app/App';
 import { AppProviders } from './app/providers';
 import { store } from './store';
-console.log(1234, store)
 
 import './style.css';
+import 'primeflex/primeflex.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
