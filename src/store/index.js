@@ -4,7 +4,7 @@ import transactionReducer from './slices/transactionSlice';
 
 export const store = configureStore({
   reducer: {
-    transactions: transactionReducer,
+    transactionReducer,
   },
 
   devTools: import.meta.env.DEV,

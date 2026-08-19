@@ -8,8 +8,12 @@ import { Select } from '@primereact/ui/select';
 
 import {
     addTransaction,
+    removeTransaction,
     selectNetBalance,
+    updateTransactionStatus,
 } from '../../store/slices/transactionSlice';
+
+import { useSaveTransaction } from '../../hooks/useSaveTransaction';
 
 const INITIAL_FORM = {
     name: '',
@@ -62,6 +66,13 @@ export default function CreateTransaction() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
+    const {
+        mutate,
+        isPending,
+        error,
+        reset,
+    } = useSaveTransaction();
+
     const netBalance = useSelector(selectNetBalance);
 
     const [form, setForm] = useState(INITIAL_FORM);
@@ -69,6 +80,9 @@ export default function CreateTransaction() {
     const [successMessage, setSuccessMessage] = useState('');
 
     const updateField = (field, value) => {
+        // Clear the previous TanStack Query mutation error.
+        reset();
+
         setForm((current) => ({
             ...current,
             [field]: value,
@@ -128,7 +142,7 @@ export default function CreateTransaction() {
     const handleSubmit = (event) => {
         event.preventDefault();
 
-        // Normal form validation
+        // 1. Validate form.
         const validationErrors = validate(form);
 
         if (Object.keys(validationErrors).length > 0) {
@@ -139,7 +153,7 @@ export default function CreateTransaction() {
 
         const amount = Number.parseFloat(form.amount);
 
-        // Insufficient balance validation
+        // Check withdrawal balance before optimistic update.
         if (
             form.accountType === 'WITHDRAW' &&
             amount > netBalance
@@ -151,25 +165,55 @@ export default function CreateTransaction() {
             });
 
             setSuccessMessage('');
-
             return;
         }
 
-        // Save transaction
-        dispatch(
-            addTransaction({
-                ...form,
-                name: form.name.trim(),
-                amount,
-            }),
-        );
+        // Generate the ID before adding the optimistic record.
+        const optimisticId = Date.now();
 
-        setForm(INITIAL_FORM);
+        const payload = {
+            id: optimisticId,
+            ...form,
+            name: form.name.trim(),
+            amount,
+            status: 'PENDING',
+        };
+
+        // Clear validation/success messages.
         setErrors({});
-        setSuccessMessage('Transaction saved');
+        setSuccessMessage('');
+
+        // 2. Optimistic update.
+        // The transaction immediately appears as PENDING.
+        dispatch(addTransaction(payload));
+
+        // 3. Fire the mock mutation.
+        mutate(payload, {
+            // 4. Success → PENDING becomes SUCCESS.
+            onSuccess: () => {
+                dispatch(
+                    updateTransactionStatus({
+                        id: optimisticId,
+                        status: 'SUCCESS',
+                    }),
+                );
+
+                setForm(INITIAL_FORM);
+                setSuccessMessage(
+                    'Transaction saved successfully.',
+                );
+            },
+
+            // 5. Error → rollback.
+            // TanStack Query stores the error in `error`.
+            onError: () => {
+                dispatch(removeTransaction(optimisticId));
+            },
+        });
     };
 
     const handleCancel = () => {
+        reset();
         setForm(INITIAL_FORM);
         setErrors({});
         setSuccessMessage('');
@@ -311,9 +355,7 @@ export default function CreateTransaction() {
                             onChange={handleAccountNumberChange}
                             inputMode="numeric"
                             maxLength={10}
-                            invalid={Boolean(
-                                errors.accountNumber,
-                            )}
+                            invalid={Boolean(errors.accountNumber)}
                             placeholder="Enter account number"
                             className="w-full"
                         />
@@ -345,9 +387,7 @@ export default function CreateTransaction() {
                                     event.value,
                                 )
                             }
-                            invalid={Boolean(
-                                errors.accountType,
-                            )}
+                            invalid={Boolean(errors.accountType)}
                         >
                             <Select.Trigger
                                 id="account-type"
@@ -401,6 +441,17 @@ export default function CreateTransaction() {
                         )}
                     </div>
 
+                    {/* TanStack Mutation Error */}
+                    {error && (
+                        <div
+                            role="alert"
+                            className="p-3 border-round bg-red-50 text-red-700"
+                        >
+                            {error.message ||
+                                'Failed to save transaction.'}
+                        </div>
+                    )}
+
                     {/* Success */}
                     {successMessage && (
                         <div
@@ -418,6 +469,7 @@ export default function CreateTransaction() {
                             severity="secondary"
                             variant="outlined"
                             onClick={handleCancel}
+                            disabled={isPending}
                             className="w-full sm:w-auto"
                         >
                             Cancel
@@ -429,6 +481,7 @@ export default function CreateTransaction() {
                             onClick={() =>
                                 navigate('/transactions')
                             }
+                            disabled={isPending}
                             className="w-full sm:w-auto"
                         >
                             Transaction List
@@ -436,6 +489,7 @@ export default function CreateTransaction() {
 
                         <Button
                             type="submit"
+                            disabled={isPending}
                             className="w-full sm:w-auto"
                         >
                             Save Transaction

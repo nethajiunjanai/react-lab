@@ -1,15 +1,29 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
-    AllCommunityModule,
+    ClientSideRowModelModule,
     ModuleRegistry,
-    themeQuartz,
+    themeQuartz
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import { Button } from '@primereact/ui/button';
+import { InputText } from '@primereact/ui/inputtext';
 
 import { useUsers } from '../../hooks/useUsers';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+ModuleRegistry.registerModules([
+    ClientSideRowModelModule,
+]);
+
+const BLOOD_COLORS = {
+    'A+': '#fce8e8',
+    'A-': '#fce8e8',
+    'B+': '#e8f0fc',
+    'B-': '#e8f0fc',
+    'AB+': '#f0ebfa',
+    'AB-': '#f0ebfa',
+    'O+': '#e8f5ec',
+    'O-': '#e8f5ec',
+};
 
 const EmailCellRenderer = ({ value }) => {
     if (!value) {
@@ -76,6 +90,23 @@ const NameCellRenderer = ({ data }) => {
     );
 };
 
+const BloodGroupRenderer = ({ value }) => {
+    return (
+        <span
+            style={{
+                background:
+                    BLOOD_COLORS[value] || '#f1f3f5',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+            }}
+        >
+            {value || '-'}
+        </span>
+    );
+};
+
 function UsersList() {
     const {
         data: users = [],
@@ -84,6 +115,12 @@ function UsersList() {
         error,
         refetch,
     } = useUsers(20);
+
+    // AG Grid reference
+    const gridRef = useRef(null);
+
+    // Quick filter input value
+    const [quickFilter, setQuickFilter] = useState('');
 
     const columnDefs = useMemo(
         () => [
@@ -152,9 +189,14 @@ function UsersList() {
                 minWidth: 300,
             },
 
+            // Age formatter
             {
                 headerName: 'Age',
                 field: 'age',
+
+                valueFormatter: (params) =>
+                    `${params.value} yrs`,
+
                 width: 100,
             },
 
@@ -174,6 +216,14 @@ function UsersList() {
 
                     return '-';
                 },
+            },
+
+            // Blood group renderer
+            {
+                headerName: 'Blood Group',
+                field: 'bloodGroup',
+                width: 140,
+                cellRenderer: BloodGroupRenderer,
             },
 
             {
@@ -205,6 +255,36 @@ function UsersList() {
         [],
     );
 
+    // Global quick filter
+    const onFilterChange = (event) => {
+        const value = event.target.value;
+
+        setQuickFilter(value);
+
+        gridRef.current?.api?.setGridOption(
+            'quickFilterText',
+            value,
+        );
+    };
+
+    // Clear quick filter
+    const clearQuickFilter = () => {
+        setQuickFilter('');
+
+        gridRef.current?.api?.setGridOption(
+            'quickFilterText',
+            '',
+        );
+    };
+
+    // Export CSV
+    const exportCsv = () => {
+        gridRef.current?.api?.exportDataAsCsv({
+            fileName: 'users-export.csv',
+            columnSeparator: ',',
+        });
+    };
+
     if (isLoading) {
         return (
             <main
@@ -224,7 +304,6 @@ function UsersList() {
                     }}
                 >
                     <h2>Loading users...</h2>
-
                     <p>Fetching 20 users...</p>
                 </div>
             </main>
@@ -316,6 +395,46 @@ function UsersList() {
                 </Button>
             </div>
 
+            {/* Search + Export */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    marginBottom: '1rem',
+                    flexWrap: 'wrap',
+                }}
+            >
+                <InputText
+                    value={quickFilter}
+                    onChange={onFilterChange}
+                    placeholder="Search all columns..."
+                    className="w-full"
+                    style={{
+                        maxWidth: '400px',
+                    }}
+                />
+
+                <Button
+                    type="button"
+                    severity="secondary"
+                    variant="outlined"
+                    icon="pi pi-times"
+                    onClick={clearQuickFilter}
+                    disabled={!quickFilter}
+                >
+                    Clear
+                </Button>
+
+                <Button
+                    type="button"
+                    icon="pi pi-download"
+                    onClick={exportCsv}
+                >
+                    Export CSV
+                </Button>
+            </div>
+
             {/* AG Grid */}
             <div
                 style={{
@@ -323,7 +442,9 @@ function UsersList() {
                 }}
             >
                 <AgGridReact
+                    ref={gridRef}
                     theme={themeQuartz}
+                    modules={[ClientSideRowModelModule]}
                     rowData={users}
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
