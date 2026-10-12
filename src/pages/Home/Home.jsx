@@ -10,6 +10,7 @@ import {
     selectTotalWithdrawals,
     selectNetBalance,
 } from '../../store/slices/transactionSlice';
+import TransactionChart from './TransactionChart';
 
 const formatCurrency = (value) =>
     new Intl.NumberFormat('en-US', {
@@ -226,6 +227,9 @@ function Home() {
                         </Card.Body>
                     </Card.Root>
                 </section>
+            </div>
+            <div className="p-3">
+            <TransactionChart />
             </div>
         </main>
     );
